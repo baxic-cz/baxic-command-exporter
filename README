@@ -1,0 +1,85 @@
+
+---- Introduction
+
+Baxic Command Exporter is a Prometheus Exporter used to collect metrics
+from a monitored host using any commands configured in the configuration
+file, e.g. in a similar way like the NRPE agent for Nagios or Icinga.
+It's written in Bash and uses the ncat command to listen on TCP port 9088.
+
+See online Wiki for more information:
+
+https://baxic.org/index.php/wikipedia/article/linux/monitoring/prometheus/exporters/baxic-command-exporter
+
+
+---- Prerequisities
+
+The ncat tool must be present on the system. Moreover, /bih/sh must be
+a symlink to /bin/bash otherwise the function export doesn't work properly
+(note the export -f ... commands in the script).
+
+
+---- Installation
+
+# switch to root user
+mkdir -p /opt/prometheus-apps
+cd /opt/prometheus-apps
+
+# either clone a git repository
+git clone git://github.com/baxic-cz/baxic-command-exporter.git
+# or extract the tgz archive
+tar -xzf baxic-command-exporter*.tgz
+ln -s baxic-command-exporter.*.linux-noarch baxic-command-exporter
+
+cd baxic-command-exporter
+
+# check file permissions
+chmod a+x *.sh
+ls -l
+
+# configure metrics in baxic-command-exporter.conf, an example configuration follows,
+# each entry in the COMMAND array consists of two fields separated by a colon,
+# the metric name and the command with optional arguments
+cat baxic-command-exporter.conf
+
+COMMAND[0]='users:who | wc -l'
+COMMAND[1]='total_processes:ps -e --no-headers | wc -l'
+COMMAND[2]='zombie_processes:ps -eo stat --no-headers | grep ^Z | wc -l'
+
+
+# define the exporter as a systemd service if required
+cp baxic-command-expoter.service /etc/systemd/system
+systemctl daemon-reload
+systemctl enable baxic-command-exporter.service
+
+
+---- Running
+
+The script should be run under the user with appropriate permissions
+to invoke the configured commands. However, it's strongly recommended
+to run it under non-privileged user. If you need to elevate permissions,
+consider using sudo, for instance.
+
+To start the service under the pre-configured nobody:nogroup user:group, run:
+
+systemctl start baxic-command-exporter.service
+
+Or if you want to run/test it just as a CLI command, run under the required user
+account:
+
+/opt/prometheus-apps/baxic-command-exporter/baxic-command-exporter.sh
+
+
+---- Test functionality
+
+The returned metrics can be checked from a web-browser or from a command-line,
+e.g. using curl:
+
+curl -i http://localhost:9088
+
+
+---- Summary
+
+The exporter is up and running now. You should consider protecting access
+to it on your firewall. You can now collect its metrics in a standard way
+using Prometheus.
+
